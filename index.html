@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Calcula precios, crea presupuestos y organiza tus cuentas con Oficio Propio.">
+  <meta name="description" content="Mi proyecto de presupuesto personal, para pequeños emprendimientos.">
   <meta name="theme-color" content="#121212">
-<title>Oficio Propio | Presupuestos y cuentas</title>
+<title>Oficio Propio | Calculadora de presupuesto personal</title>
 <link rel="icon" type="image/png" href="images/oficio-propio-icon.png">
 <link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="style.css">
@@ -16,7 +16,7 @@
   <p>Presupuesta con calma. Organiza tus cuentas.</p>
 </header>
   <main>
-    <p id="estadoGeneral" role="status" aria-live="polite">Conectando con BlackBudget…</p>
+    <p id="estadoGeneral" role="status" aria-live="polite">Conectando con Oficio Propio…</p>
 
     <section id="authSection" class="panel-auth">
       <h2>🌙 Tu espacio</h2>
@@ -42,7 +42,7 @@
         <button id="btnLogout" type="button">Cerrar sesión</button>
       </div>
 
-      <nav aria-label="Secciones de BlackBudget">
+      <nav aria-label="Secciones de Oficio Propio">
         <button type="button" data-vista="inicio">Inicio</button>
         <button type="button" data-vista="productos">Productos</button>
         <button type="button" data-vista="comisiones">Comisiones</button>
@@ -132,7 +132,7 @@
     </section>
   </main>
 
-  <footer><p>BlackBudget · Tus números, a tu manera 🌙</p></footer>
+  <footer><p>Oficio Propio · Tus números, a tu manera 🌙</p></footer>
 
   <script
  type="module">
@@ -143,7 +143,8 @@
       sendPasswordResetEmail
     } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
     import {
-      getFirestore, collection, addDoc, getDocs, deleteDoc, doc,
+      initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+      collection, addDoc, getDocs, getDocsFromCache, deleteDoc, doc,
       serverTimestamp, query, orderBy
     } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
@@ -158,7 +159,11 @@
 
    const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
-    const db = getFirestore(app);
+    const db = initializeFirestore(app, {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager()
+      })
+    });
     const googleProvider = new GoogleAuthProvider();
 
     const $ = (id) => document.getElementById(id);
@@ -190,6 +195,43 @@
     function rutaColeccion(nombre) {
       if (!usuario) throw new Error("Debes iniciar sesión para guardar información.");
       return collection(db, "users", usuario.uid, nombre);
+    }
+
+    // Firestore guarda primero en el dispositivo y sincroniza al volver internet.
+    function guardarConSincronizacion(nombreColeccion, datos, recargar, destino, etiqueta) {
+      let escritura;
+
+      try {
+        escritura = addDoc(rutaColeccion(nombreColeccion), {
+          ...datos,
+          createdAt: serverTimestamp()
+        });
+      } catch (error) {
+        estado(mensajeError(error), destino);
+        return;
+      }
+
+      if (navigator.onLine) {
+        estado(`Guardando ${etiqueta.toLowerCase()}…`, destino);
+      } else {
+        estado(
+          `${etiqueta} guardado en este dispositivo. Se sincronizará cuando vuelva internet.`,
+          destino
+        );
+      }
+
+      // Mostrar de inmediato el registro local, sin esperar al servidor.
+      recargar().catch(error => estado(mensajeError(error), destino));
+
+      escritura.then(async () => {
+        estado(`${etiqueta} sincronizado con tu cuenta.`, destino);
+        await recargar();
+      }).catch(error => {
+        estado(
+          `No se pudo sincronizar ${etiqueta.toLowerCase()}. ${mensajeError(error)}`,
+          destino
+        );
+      });
     }
 
     function dinero(valor) {
@@ -273,7 +315,11 @@
       $("zonaApp").hidden = !conectado;
       $("usuarioActual").textContent = usuario?.email || "Cuenta de Google";
       if (conectado) {
-        estado("Conectada. Tus datos se guardan en tu espacio privado.");
+        if (navigator.onLine) {
+          estado("Conectada. Tus datos se guardan en tu espacio privado.");
+        } else {
+          estado("Sin conexión. Los nuevos registros quedarán pendientes de sincronización.");
+        }
         mostrarVista("inicio");
         await cargarTodo();
       } else {
@@ -334,19 +380,13 @@ $("formProducto").addEventListener("submit", async evento => {
     `Precio total sugerido: ${dinero(precio)} · ` +
     `Precio por unidad: ${dinero(precioUnitario)}`;
 
-  estado("Guardando producto…", "avisoProducto");
-
-  try {
-    await addDoc(rutaColeccion("products"), {
-      ...productoCalculado,
-      createdAt: serverTimestamp()
-    });
-
-    estado("Producto calculado y guardado.", "avisoProducto");
-    await cargarProductos();
-  } catch (error) {
-    estado(mensajeError(error), "avisoProducto");
-  }
+  guardarConSincronizacion(
+    "products",
+    productoCalculado,
+    cargarProductos,
+    "avisoProducto",
+    "Producto"
+  );
 });
     $("formComision").addEventListener("submit", async evento => {
       evento.preventDefault();
@@ -362,12 +402,13 @@ $("formProducto").addEventListener("submit", async evento => {
       const precio = Math.round(costoTotal * (1 + porcentaje / 100));
       comisionCalculada = { nombre, tipo, horas, tarifa, gastos, porcentaje, manoObra, costoTotal, precio };
       $("resultadoComision").textContent = `Costo total: ${dinero(costoTotal)} · Precio sugerido: ${dinero(precio)} · Ganancia: ${dinero(precio - costoTotal)}`;
-      estado("Guardando comisión…", "avisoComision");
-      try {
-        await addDoc(rutaColeccion("commissions"), { ...comisionCalculada, createdAt: serverTimestamp() });
-        estado("Comisión guardada en tu cuenta.", "avisoComision");
-        await cargarComisiones();
-      } catch (error) { estado(mensajeError(error), "avisoComision"); }
+      guardarConSincronizacion(
+        "commissions",
+        comisionCalculada,
+        cargarComisiones,
+        "avisoComision",
+        "Comisión"
+      );
     });
 
     $("formMovimiento").addEventListener("submit", async evento => {
@@ -380,20 +421,50 @@ $("formProducto").addEventListener("submit", async evento => {
       if (!descripcion || !Number.isFinite(valor) || valor <= 0 || !fecha) {
         return estado("Completa todos los campos con valores válidos.", "avisoMovimiento");
       }
-      try {
-        await addDoc(rutaColeccion("movements"), { tipo, descripcion, valor, fecha, createdAt: serverTimestamp() });
-        $("formMovimiento").reset();
-        $("fechaMovimiento").value = new Date().toISOString().slice(0, 10);
-        estado("Movimiento guardado.", "avisoMovimiento");
-        await cargarMovimientos();
-      } catch (error) { estado(mensajeError(error), "avisoMovimiento"); }
+      guardarConSincronizacion(
+        "movements",
+        { tipo, descripcion, valor, fecha },
+        cargarMovimientos,
+        "avisoMovimiento",
+        "Movimiento"
+      );
+      $("formMovimiento").reset();
+      window.addEventListener("offline", () => {
+      if (usuario) {
+        estado("Sin conexión. Los registros nuevos se guardarán en este dispositivo.");
+      }
+    });
+
+    window.addEventListener("online", () => {
+      if (usuario) {
+        estado("Conexión recuperada. Sincronizando registros pendientes…");
+        cargarTodo();
+      }
+    });
+
+    $("fechaMovimiento").value = new Date().toISOString().slice(0, 10);
     });
 
     async function leerColeccion(nombre) {
       if (!usuario) return [];
+
       const consulta = query(rutaColeccion(nombre), orderBy("createdAt", "desc"));
-      const instantanea = await getDocs(consulta);
-      return instantanea.docs.map(documento => ({ id: documento.id, ...documento.data() }));
+      let instantanea;
+
+      try {
+        instantanea = navigator.onLine
+          ? await getDocs(consulta)
+          : await getDocsFromCache(consulta);
+      } catch (error) {
+        // Si falla la conexión, intenta mostrar lo que ya existe en el dispositivo.
+        instantanea = await getDocsFromCache(consulta);
+      }
+
+      return instantanea.docs.map(documento => ({
+        id: documento.id,
+        ...documento.data(),
+        pendiente: documento.metadata.hasPendingWrites
+      }));
     }
 
     async function cargarProductos() {
@@ -420,9 +491,10 @@ $("formProducto").addEventListener("submit", async evento => {
           <br>
           Precio por unidad: ${dinero(precioUnidad)}
           <br>
-          Costo por unidad: ${dinero(costoUnidad)}
+        Costo por unidad: ${dinero(costoUnidad)}
           <br>
           Precio total del lote: ${dinero(item.precio)}
+          ${item.pendiente ? "<br><small>Pendiente de sincronización</small>" : ""}
         `;
 
         const eliminar = document.createElement("button");
@@ -458,6 +530,7 @@ $("formProducto").addEventListener("submit", async evento => {
           Costo total: ${dinero(item.costoTotal)}
           <br>
           Precio sugerido: ${dinero(item.precio)}
+          ${item.pendiente ? "<br><small>Pendiente de sincronización</small>" : ""}
         `;
 
         const eliminar = document.createElement("button");
@@ -476,13 +549,18 @@ $("formProducto").addEventListener("submit", async evento => {
       const lista = $("listaMovimientos");
       lista.replaceChildren();
       const elementos = await leerColeccion("movements");
-let ingresos = 0, gastos = 0;
+      let ingresos = 0, gastos = 0;
       elementos.forEach(item => { if (item.tipo === "ingreso") ingresos += Number(item.valor) || 0; else gastos += Number(item.valor) || 0; });
       $("resumenMovimientos").textContent = `Ingresos: ${dinero(ingresos)} · Gastos: ${dinero(gastos)} · Balance: ${dinero(ingresos - gastos)}`;
             if (!elementos.length) { lista.textContent = "Todavía no has registrado movimientos."; return; }
       elementos.forEach(item => {
         const li = document.createElement("li");
         li.textContent = `${item.fecha || "Sin fecha"} · ${item.tipo === "ingreso" ? "Ingreso" : "Gasto"}: ${item.descripcion} · ${dinero(item.valor)} `;
+        if (item.pendiente) {
+          const pendiente = document.createElement("small");
+          pendiente.textContent = "Pendiente de sincronización";
+          li.append(pendiente, " ");
+        }
         const eliminar = document.createElement("button");
         eliminar.type = "button"; eliminar.textContent = "Eliminar";
         eliminar.addEventListener("click", () => eliminarDocumento("movements", item.id, cargarMovimientos, "avisoMovimiento"));
@@ -517,6 +595,19 @@ let ingresos = 0, gastos = 0;
         estado(mensajeError(error));
       }
     }
+
+    window.addEventListener("offline", () => {
+      if (usuario) {
+        estado("Sin conexión. Los registros nuevos se guardarán en este dispositivo.");
+      }
+    });
+
+    window.addEventListener("online", () => {
+      if (usuario) {
+        estado("Conexión recuperada. Sincronizando registros pendientes…");
+        cargarTodo();
+      }
+    });
 
     $("fechaMovimiento").value = new Date().toISOString().slice(0, 10);
   </script>
