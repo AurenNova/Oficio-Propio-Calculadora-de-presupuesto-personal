@@ -399,44 +399,76 @@ $("formProducto").addEventListener("submit", async evento => {
     async function cargarProductos() {
       const lista = $("listaProductos");
       lista.replaceChildren();
+
       const elementos = await leerColeccion("products");
-      if (!elementos.length) { lista.textContent = "Todavía no has guardado productos."; return; }
+
+      if (!elementos.length) {
+        lista.textContent = "Todavía no has guardado productos.";
+        return;
+      }
+
       elementos.forEach(item => {
         const li = document.createElement("li");
-        li.innerHTML = `<strong>${textoSeguro(item.nombre)}</strong>: ${dinero(item.precio)} <span>(costo: ${dinero(item.costoTotal)})</span> `;
+        const cantidad = item.cantidad || 1;
+        const precioUnidad = item.precioUnitario ?? item.precio;
+        const costoUnidad = item.costoUnitario ?? item.costoTotal;
+
+        li.innerHTML = `
+          <strong>${textoSeguro(item.nombre)}</strong>
+          <br>
+          Unidades: ${cantidad}
+          <br>
+          Precio por unidad: ${dinero(precioUnidad)}
+          <br>
+          Costo por unidad: ${dinero(costoUnidad)}
+          <br>
+          Precio total del lote: ${dinero(item.precio)}
+        `;
+
         const eliminar = document.createElement("button");
-        eliminar.type = "button"; eliminar.textContent = "Eliminar";
-        eliminar.addEventListener("click", () => eliminarDocumento("products", item.id, cargarProductos, "avisoProducto"));
-        li.append(" ", eliminar); lista.append(li);
+        eliminar.type = "button";
+        eliminar.textContent = "Eliminar";
+        eliminar.addEventListener("click", () =>
+          eliminarDocumento("products", item.id, cargarProductos, "avisoProducto")
+        );
+
+        li.append(" ", eliminar);
+        lista.append(li);
       });
     }
 
     async function cargarComisiones() {
       const lista = $("listaComisiones");
       lista.replaceChildren();
+
       const elementos = await leerColeccion("commissions");
-      if (!elementos.length) { lista.textContent = "Todavía no has guardado comisiones."; return; }
+
+      if (!elementos.length) {
+        lista.textContent = "Todavía no has guardado comisiones.";
+        return;
+      }
+
       elementos.forEach(item => {
         const li = document.createElement("li");
-        const cantidad = item.cantidad || 1;
-const precioUnidad = item.precioUnitario ?? item.precio;
-const costoUnidad = item.costoUnitario ?? item.costoTotal;
 
-li.innerHTML = `
-  <strong>${textoSeguro(item.nombre)}</strong>
-  <br>
-  Unidades: ${cantidad}
-  <br>
-  Precio por unidad: ${dinero(precioUnidad)}
-  <br>
-  Costo por unidad: ${dinero(costoUnidad)}
-  <br>
-  Precio total del lote: ${dinero(item.precio)}
-`;
+        li.innerHTML = `
+          <strong>${textoSeguro(item.nombre)}</strong>
+          ${item.tipo ? ` · ${textoSeguro(item.tipo)}` : ""}
+          <br>
+          Costo total: ${dinero(item.costoTotal)}
+          <br>
+          Precio sugerido: ${dinero(item.precio)}
+        `;
+
         const eliminar = document.createElement("button");
-        eliminar.type = "button"; eliminar.textContent = "Eliminar";
-        eliminar.addEventListener("click", () => eliminarDocumento("commissions", item.id, cargarComisiones, "avisoComision"));
-        li.append(" ", eliminar); lista.append(li);
+        eliminar.type = "button";
+        eliminar.textContent = "Eliminar";
+        eliminar.addEventListener("click", () =>
+          eliminarDocumento("commissions", item.id, cargarComisiones, "avisoComision")
+        );
+
+        li.append(" ", eliminar);
+        lista.append(li);
       });
     }
 
@@ -444,10 +476,10 @@ li.innerHTML = `
       const lista = $("listaMovimientos");
       lista.replaceChildren();
       const elementos = await leerColeccion("movements");
-      let ingresos = 0, gastos = 0;
+let ingresos = 0, gastos = 0;
       elementos.forEach(item => { if (item.tipo === "ingreso") ingresos += Number(item.valor) || 0; else gastos += Number(item.valor) || 0; });
       $("resumenMovimientos").textContent = `Ingresos: ${dinero(ingresos)} · Gastos: ${dinero(gastos)} · Balance: ${dinero(ingresos - gastos)}`;
-      if (!elementos.length) { lista.textContent = "Todavía no has registrado movimientos."; return; }
+            if (!elementos.length) { lista.textContent = "Todavía no has registrado movimientos."; return; }
       elementos.forEach(item => {
         const li = document.createElement("li");
         li.textContent = `${item.fecha || "Sin fecha"} · ${item.tipo === "ingreso" ? "Ingreso" : "Gasto"}: ${item.descripcion} · ${dinero(item.valor)} `;
@@ -498,4 +530,4 @@ if ("serviceWorker" in navigator) {
 }
 </script>
 </body>
-</html>
+</html> 
