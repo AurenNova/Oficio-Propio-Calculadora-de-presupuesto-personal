@@ -25,6 +25,17 @@ jobs:
             echo "El secreto está disponible"
           fi
 
+      - name: Registrar destinos de Hosting
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-key.json
+        run: |
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$GOOGLE_APPLICATION_CREDENTIALS"
+
+          npx firebase-tools@latest target:apply hosting original blackbudget-2b1fc --project blackbudget-2b1fc
+
+          npx firebase-tools@latest target:apply hosting nuevo calculadorapersonaldepresupuestos --project blackbudget-2b1fc
+
       - name: Publicar sitio original
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
