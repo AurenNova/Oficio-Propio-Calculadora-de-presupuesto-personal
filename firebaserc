@@ -1,0 +1,18 @@
+
+{
+  "projects": {
+    "default": "blackbudget-2b1fc"
+  },
+  "targets": {
+    "blackbudget-2b1fc": {
+      "hosting": {
+        "original": [
+          "blackbudget-2b1fc"
+        ],
+        "nuevo": [
+          "calculadorapersonaldepresupuestos"
+        ]
+      }
+    }
+  }
+}
