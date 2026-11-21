@@ -1,3 +1,4 @@
+
 name: Deploy Oficio Propio to Firebase Hosting
 
 on:
@@ -24,10 +25,20 @@ jobs:
             echo "El secreto está disponible"
           fi
 
-      - name: Publicar en Firebase Hosting
+      - name: Publicar sitio original
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: "${{ secrets.GITHUB_TOKEN }}"
           firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}"
           projectId: blackbudget-2b1fc
           channelId: live
+          target: original
+
+      - name: Publicar sitio nuevo
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: "${{ secrets.GITHUB_TOKEN }}"
+          firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}"
+          projectId: blackbudget-2b1fc
+          channelId: live
+          target: nuevo
