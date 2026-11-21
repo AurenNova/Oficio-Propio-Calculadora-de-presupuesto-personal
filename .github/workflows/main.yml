@@ -12,7 +12,16 @@ jobs:
     steps:
       - name: Descargar repositorio
         uses: actions/checkout@v4
-
+      - name: Comprobar secreto de Firebase
+        env:
+          FIREBASE_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$FIREBASE_KEY" ]; then
+            echo "El secreto está vacío o no está disponible"
+            exit 1
+          else
+            echo "El secreto está disponible"
+          fi
       - name: Publicar en Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
