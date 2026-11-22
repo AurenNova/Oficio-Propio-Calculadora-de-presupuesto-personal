@@ -413,8 +413,9 @@
     onAuthStateChanged(auth, async usuarioFirebase => {
       usuario = usuarioFirebase;
       const conectado = Boolean(usuario);
-      $("authSection").hidden = conectado;
-      $("zonaApp").hidden = !conectado;
+$("presentacionPublica").hidden = conectado;
+$("authSection").hidden = conectado;
+$("zonaApp").hidden = !conectado;
       $("usuarioActual").textContent = usuario?.email || "Cuenta de Google";
       if (conectado) {
         if (navigator.onLine) {
