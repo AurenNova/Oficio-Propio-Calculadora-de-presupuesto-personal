@@ -409,12 +409,22 @@
         estado("Sesión cerrada correctamente.");
       } catch (error) { estado(mensajeError(error)); }
     });
+document.querySelectorAll(".boton-presentacion").forEach(boton => {
+  boton.addEventListener("click", evento => {
+    evento.preventDefault();
 
+    $("authSection").hidden = false;
+    $("authSection").scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+  });
+});
     onAuthStateChanged(auth, async usuarioFirebase => {
       usuario = usuarioFirebase;
       const conectado = Boolean(usuario);
 $("presentacionPublica").hidden = conectado;
-$("authSection").hidden = conectado;
+$("authSection").hidden = true;
 $("zonaApp").hidden = !conectado;
       $("usuarioActual").textContent = usuario?.email || "Cuenta de Google";
       if (conectado) {
