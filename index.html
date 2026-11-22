@@ -422,6 +422,7 @@ document.querySelectorAll(".boton-presentacion").forEach(boton => {
     onAuthStateChanged(auth, async usuarioFirebase => {
       usuario = usuarioFirebase;
       const conectado = Boolean(usuario);
+$("estadoGeneral").hidden = !conectado;
 $("presentacionPublica").hidden = conectado;
 $("authSection").hidden = true;
 $("zonaApp").hidden = !conectado;
