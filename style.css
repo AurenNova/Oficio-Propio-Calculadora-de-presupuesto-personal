@@ -607,3 +607,47 @@ body > footer {
     padding: 16px;
   }
 }
+
+/* =========================================
+   PREGUNTAS FRECUENTES | OFICIO PROPIO
+   ========================================= */
+
+.presentacion-preguntas {
+  margin: 35px 0;
+  padding: 25px;
+  background: rgba(43, 35, 56, 0.75);
+  border: 1px solid var(--borde);
+  border-radius: 22px;
+}
+
+.presentacion-preguntas h2 {
+  color: var(--lavanda);
+  text-align: center;
+  margin-bottom: 25px;
+}
+
+.presentacion-preguntas details {
+  margin: 12px 0;
+  padding: 16px;
+  background: rgba(23, 19, 31, 0.85);
+  border: 1px solid var(--borde);
+  border-radius: 14px;
+}
+
+.presentacion-preguntas summary {
+  color: var(--lavanda);
+  font-weight: bold;
+  cursor: pointer;
+  line-height: 1.5;
+}
+
+.presentacion-preguntas details[open] {
+  border-color: var(--morado);
+  background: var(--superficie);
+}
+
+.presentacion-preguntas details p {
+  color: var(--texto-suave);
+  line-height: 1.7;
+  margin: 14px 0 0;
+}
